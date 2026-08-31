@@ -1,6 +1,5 @@
-package com.swiftpay.ledger.exception;
+package com.swiftpay.analytics.exception;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +33,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(payload);
     }
 
-    @ExceptionHandler({EntityNotFoundException.class, NoResourceFoundException.class})
-    public ResponseEntity<Map<String, Object>> handleNotFound(Exception ex, HttpServletRequest request) {
-        String message = ex instanceof NoResourceFoundException
-            ? "No endpoint for " + request.getMethod() + " " + request.getRequestURI()
-            : ex.getMessage();
-        return body(HttpStatus.NOT_FOUND, message, request);
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        return body(HttpStatus.NOT_FOUND,
+            "No endpoint for " + request.getMethod() + " " + request.getRequestURI(), request);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

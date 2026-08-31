@@ -106,6 +106,34 @@ class PaymentControllerTest {
             .andExpect(jsonPath("$.status").value(404));
     }
 
+    @Test
+    @DisplayName("POST /v1/payments - 400 Bad Request for malformed JSON body")
+    void initiatePayment_malformedBody_returns400() throws Exception {
+        mockMvc.perform(post("/v1/payments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ not valid json"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("PUT /v1/payments/{id} - 405 Method Not Allowed")
+    void unsupportedMethod_returns405() throws Exception {
+        mockMvc.perform(put("/v1/payments/txn-001"))
+            .andExpect(status().isMethodNotAllowed())
+            .andExpect(jsonPath("$.status").value(405));
+    }
+
+    @Test
+    @DisplayName("POST /v1/payments - 415 when Content-Type is not JSON")
+    void wrongContentType_returns415() throws Exception {
+        mockMvc.perform(post("/v1/payments")
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("{\"transactionId\":\"txn-001\"}"))
+            .andExpect(status().isUnsupportedMediaType())
+            .andExpect(jsonPath("$.status").value(415));
+    }
+
     private PaymentRequest buildRequest(String txnId, String sender, String receiver,
                                         String amount, String currency) {
         PaymentRequest req = new PaymentRequest();

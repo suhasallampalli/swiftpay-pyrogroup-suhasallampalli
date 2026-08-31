@@ -54,7 +54,7 @@ class PaymentServiceTest {
 
         Payment savedPayment = new Payment("txn-001", "user-001", "user-002",
             new BigDecimal("100.00"), "USD", PaymentStatus.PENDING);
-        given(paymentRepository.save(any(Payment.class))).willReturn(savedPayment);
+        given(paymentRepository.saveAndFlush(any(Payment.class))).willReturn(savedPayment);
 
         PaymentResponse response = paymentService.initiatePayment(req);
 

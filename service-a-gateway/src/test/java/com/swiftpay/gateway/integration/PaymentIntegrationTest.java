@@ -59,7 +59,8 @@ class PaymentIntegrationTest {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isAccepted())
             .andExpect(jsonPath("$.status").value("PENDING"))
-            .andExpect(jsonPath("$.transactionId").value(request.getTransactionId()));
+            .andExpect(jsonPath("$.transactionId").value(request.getTransactionId()))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
     }
 
     @Test
@@ -137,6 +138,24 @@ class PaymentIntegrationTest {
     void negativeTest_getNotFound_returns404() throws Exception {
         mockMvc.perform(get("/v1/payments/non-existent-txn"))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("NEGATIVE: unknown path returns 404 (not 500)")
+    void negativeTest_unknownPath_returns404() throws Exception {
+        mockMvc.perform(get("/v1/unknown-endpoint"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("NEGATIVE: wrong HTTP method returns 405 (not 500)")
+    void negativeTest_wrongMethod_returns405() throws Exception {
+        mockMvc.perform(delete("/v1/payments/any-id"))
+            .andExpect(status().isMethodNotAllowed())
+            .andExpect(jsonPath("$.status").value(405));
     }
 
     @Test

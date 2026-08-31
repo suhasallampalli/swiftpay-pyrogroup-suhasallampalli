@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 public class PaymentService {
@@ -46,13 +47,16 @@ public class PaymentService {
             .setIfAbsent(idempotencyKey, "PROCESSING", Duration.ofHours(idempotencyTtlHours));
 
         if (Boolean.FALSE.equals(isNew)) {
-            log.info("Duplicate transaction detected, returning existing record for transactionId={}",
+            Optional<Payment> existing = paymentRepository.findByTransactionId(request.getTransactionId());
+            if (existing.isPresent()) {
+                log.info("Duplicate transaction detected, returning existing record for transactionId={}",
+                    request.getTransactionId());
+                return toResponse(existing.get());
+            }
+            // Idempotency key is present but no payment row exists (e.g. Redis outlived a DB reset,
+            // or a prior attempt failed before the commit). Treat it as a fresh request.
+            log.warn("Stale idempotency key with no payment record for transactionId={}, reprocessing",
                 request.getTransactionId());
-            return paymentRepository.findByTransactionId(request.getTransactionId())
-                .map(this::toResponse)
-                .orElseThrow(() -> new IllegalStateException(
-                    "Idempotency key exists but payment record not found for transactionId: "
-                        + request.getTransactionId()));
         }
 
         Payment payment = new Payment(
@@ -63,20 +67,22 @@ public class PaymentService {
             request.getCurrency(),
             PaymentStatus.PENDING
         );
-        paymentRepository.save(payment);
+        // Payment has an assigned (non-generated) id, so save() would route through merge();
+        // keep the returned managed instance so @PrePersist-populated timestamps are visible.
+        Payment saved = paymentRepository.saveAndFlush(payment);
 
         PaymentInitiatedEvent event = new PaymentInitiatedEvent(
-            payment.getTransactionId(),
-            payment.getSenderId(),
-            payment.getReceiverId(),
-            payment.getAmount(),
-            payment.getCurrency(),
+            saved.getTransactionId(),
+            saved.getSenderId(),
+            saved.getReceiverId(),
+            saved.getAmount(),
+            saved.getCurrency(),
             Instant.now()
         );
         paymentEventProducer.publishPaymentInitiated(event);
 
-        log.info("Payment initiated: transactionId={}", payment.getTransactionId());
-        return toResponse(payment);
+        log.info("Payment initiated: transactionId={}", saved.getTransactionId());
+        return toResponse(saved);
     }
 
     public PaymentResponse getPayment(String transactionId) {
