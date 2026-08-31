@@ -1,0 +1,188 @@
+version: '3.9'
+
+services:
+
+  # ── Infrastructure ─────────────────────────────────────────────
+
+  postgres-gateway:
+    image: postgres:16-alpine
+    container_name: swiftpay-postgres-gateway
+    environment:
+      POSTGRES_DB: swiftpay_gateway
+      POSTGRES_USER: swiftpay
+      POSTGRES_PASSWORD: swiftpay
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-gateway-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swiftpay -d swiftpay_gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-ledger:
+    image: postgres:16-alpine
+    container_name: swiftpay-postgres-ledger
+    environment:
+      POSTGRES_DB: swiftpay_ledger
+      POSTGRES_USER: swiftpay
+      POSTGRES_PASSWORD: swiftpay
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-ledger-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swiftpay -d swiftpay_ledger"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-analytics:
+    image: postgres:16-alpine
+    container_name: swiftpay-postgres-analytics
+    environment:
+      POSTGRES_DB: swiftpay_analytics
+      POSTGRES_USER: swiftpay
+      POSTGRES_PASSWORD: swiftpay
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-analytics-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swiftpay -d swiftpay_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.0
+    container_name: swiftpay-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: swiftpay-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 24
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: swiftpay-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Application Services ───────────────────────────────────────
+
+  service-a-gateway:
+    build:
+      context: .
+      dockerfile: service-a-gateway/Dockerfile
+    container_name: swiftpay-gateway
+    depends_on:
+      postgres-gateway:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres-gateway
+      DB_PORT: 5432
+      DB_NAME: swiftpay_gateway
+      DB_USER: swiftpay
+      DB_PASS: swiftpay
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  service-b-ledger:
+    build:
+      context: .
+      dockerfile: service-b-ledger/Dockerfile
+    container_name: swiftpay-ledger
+    depends_on:
+      postgres-ledger:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres-ledger
+      DB_PORT: 5432
+      DB_NAME: swiftpay_ledger
+      DB_USER: swiftpay
+      DB_PASS: swiftpay
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  service-c-analytics:
+    build:
+      context: .
+      dockerfile: service-c-analytics/Dockerfile
+    container_name: swiftpay-analytics
+    depends_on:
+      postgres-analytics:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: postgres-analytics
+      DB_PORT: 5432
+      DB_NAME: swiftpay_analytics
+      DB_USER: swiftpay
+      DB_PASS: swiftpay
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres-gateway-data:
+  postgres-ledger-data:
+  postgres-analytics-data:

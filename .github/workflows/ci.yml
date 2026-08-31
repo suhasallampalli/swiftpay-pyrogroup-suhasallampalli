@@ -1,0 +1,43 @@
+name: SwiftPay CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and run unit tests
+        run: ./mvnw clean test -Dsurefire.failIfNoSpecifiedTests=false
+
+      - name: Run integration tests (requires Docker)
+        run: ./mvnw verify -Dsurefire.failIfNoSpecifiedTests=false
+
+      - name: Build Docker image - Service A Gateway
+        run: |
+          ./mvnw package -pl service-a-gateway -am -DskipTests
+          docker build -t swiftpay-gateway:${{ github.sha }} -f service-a-gateway/Dockerfile .
+
+      - name: Build Docker image - Service B Ledger
+        run: |
+          ./mvnw package -pl service-b-ledger -am -DskipTests
+          docker build -t swiftpay-ledger:${{ github.sha }} -f service-b-ledger/Dockerfile .
+
+      - name: Build Docker image - Service C Analytics
+        run: |
+          ./mvnw package -pl service-c-analytics -am -DskipTests
+          docker build -t swiftpay-analytics:${{ github.sha }} -f service-c-analytics/Dockerfile .
