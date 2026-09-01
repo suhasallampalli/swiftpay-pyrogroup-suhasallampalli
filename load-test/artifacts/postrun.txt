@@ -1,0 +1,7 @@
+== post-run ==
+gateway.payments        : 999677
+ledger.transactions     : 973393
+COMPLETED:973510
+analytics.payment_events: 973621
+distinct load txns (gw) : 999677
+ledger sum(balance)     : 1000000000000.0000

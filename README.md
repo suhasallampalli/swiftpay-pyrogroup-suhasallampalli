@@ -500,6 +500,23 @@ Test categories covered per the project specification:
 ./mvnw test -pl service-c-analytics -Dtest=AnalyticsIntegrationTest
 ```
 
+### Load test (250 TPS × 1,000,000 transactions)
+
+The harness for the spec's load-test requirement lives in [`load-test/`](load-test/):
+
+```bash
+export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
+docker compose up --build -d
+./load-test/run-loadtest.sh          # ~5 min warm-up + ~67 min at 250 req/s
+```
+
+A completed run is documented in **[`load-test/LOAD_TEST_REPORT.md`](load-test/LOAD_TEST_REPORT.md)**:
+999,677 requests at 249.9 req/s, 0 HTTP failures, exact end-to-end reconciliation
+(gateway → ledger `COMPLETED` → analytics, all 999,677), money conserved, zero
+Kafka retries/dead-letters. Packet capture: a 90 s full-detail window is in
+[`load-test/artifacts/`](load-test/artifacts/PCAP.md); the full 49.6 M-packet /
+68-minute trace is a [GitHub Release asset](https://github.com/suhasallampalli/swiftpay-pyrogroup-suhasallampalli/releases/tag/loadtest-1M-20260901).
+
 ---
 
 ## CI/CD

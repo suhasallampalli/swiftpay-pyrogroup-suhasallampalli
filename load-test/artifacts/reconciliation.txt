@@ -1,0 +1,20 @@
+SwiftPay load test — end-to-end reconciliation
+run window : 2026-09-01T13:47:57+0530 .. 14:55:01 (k6), capture 13:47:51..14:56:17
+
+k6 requests sent          : 999677   (target 1,000,000; 324 iterations dropped pre-send, 0.032%)
+k6 HTTP failures           : 0
+k6 throughput              : 249.92 req/s
+
+gateway.payments           : 999677
+ledger.transactions COMPLETED : 999677
+ledger.transactions total  : 999677
+analytics.payment_events   : 999677
+
+ledger accounts total bal  : 1000000000000.0000  (seed 1,000,000,000,000.0000 — unchanged: money conserved)
+
+Kafka consumer groups (post-run):
+
+analytics-service payment.completed 0          1100581         1100581         0               consumer-analytics-service-4-11697e74-6e81-4d75-89b2-10eca45c595c /172.18.0.8     consumer-analytics-service-4
+ledger-service  payment.initiated 0          1100581         1100581         0               consumer-ledger-service-5-51af83cd-bbfc-4306-b1ce-46df5a8310c5 /172.18.0.10    consumer-ledger-service-5
+
+Kafka retry / DLT topics   : LOG-END-OFFSET 0  (no message ever retried or dead-lettered)
