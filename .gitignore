@@ -38,3 +38,15 @@ spring-shell.log
 
 # Test output
 test-output/
+
+# Load-test: keep the harness + text results, never the packet captures
+# (the full-run PCAP is published as a GitHub Release asset)
+load-test/artifacts/*.pcap
+load-test/artifacts/*.pcap.gz
+load-test/artifacts/*.pcap.*
+load-test/artifacts/*.pid
+load-test/artifacts/RUN_TS
+load-test/artifacts/BRIDGE
+load-test/artifacts/baseline-*.txt
+load-test/artifacts/prerun-*.txt
+load-test/artifacts/tcpdump.log
