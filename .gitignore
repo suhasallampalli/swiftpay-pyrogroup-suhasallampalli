@@ -39,10 +39,11 @@ spring-shell.log
 # Test output
 test-output/
 
-# Load-test artifacts: keep the harness + text results + the small window PCAP.
-# The full-run PCAP (~1.5 GB gz) is published as a GitHub Release asset.
+# Load-test artifacts: keep the harness + text results + the PCAP captures.
+# The full-run PCAP (~1.5 GB gz) is also published as a GitHub Release asset;
+# it's tracked here too via Git LFS (see .gitattributes).
 load-test/artifacts/*.pcap
-load-test/artifacts/swiftpay-loadtest.pcap.gz
 load-test/artifacts/*.pid
 load-test/artifacts/tcpdump.log
 !load-test/artifacts/swiftpay-window.pcap.gz
+!load-test/artifacts/swiftpay-loadtest.pcap.gz
